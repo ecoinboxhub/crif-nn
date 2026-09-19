@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.CRIFNN" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/crifnn_background</item>
+        <item name="android:statusBarColor">@color/crifnn_background</item>
+        <item name="android:navigationBarColor">@color/crifnn_background</item>
+        <item name="android:colorAccent">@color/ic_launcher_background</item>
+    </style>
+</resources>

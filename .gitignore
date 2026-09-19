@@ -5,3 +5,12 @@ __pycache__/
 .vercel/
 dist/
 node_modules/
+
+# Android build (mobile-apk)
+mobile-apk/.gradle/
+mobile-apk/build/
+mobile-apk/app/build/
+mobile-apk/local.properties
+mobile-apk/keystore.properties
+mobile-apk/crifnn-release.keystore
+*.keystore

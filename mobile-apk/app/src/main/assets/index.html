@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRIF-NN Road Monitor</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0b1220;--panel:rgba(17,26,45,.92);--panel2:rgba(22,36,63,.85);--panel3:rgba(30,49,82,.6);
+  --line:#243454;--line2:#31466f;--text:#e8eefc;--muted:#90a3c4;--dim:#5d7298;
+  --accent:#38bdf8;--teal:#2dd4bf;--green:#22c55e;--amber:#fbbf24;--red:#f87171;--crimson:#ef4444;--work:#94a3b8;
+}
+body{
+  font-family:'Segoe UI',Roboto,sans-serif;color:var(--text);background:var(--bg);
+  background-image:radial-gradient(circle at 12% -10%,rgba(56,189,248,.14),transparent 45%),
+  radial-gradient(circle at 88% 12%,rgba(45,212,191,.10),transparent 45%),
+  linear-gradient(rgba(56,189,248,.035) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(56,189,248,.035) 1px,transparent 1px);
+  background-size:auto,auto,34px 34px,34px 34px;min-height:100vh;
+}
+.wrap{max-width:520px;margin:0 auto;padding:0 14px 24px}
+.hdr{
+  position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px;background:rgba(8,12,24,.6);border-bottom:1px solid var(--line);
+  backdrop-filter:blur(8px);gap:10px;
+}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--teal));display:flex;align-items:center;justify-content:center;color:#071018;font-weight:900;font-size:17px;box-shadow:0 4px 16px rgba(56,189,248,.35)}
+.brand b{display:block;font-size:15px;letter-spacing:.3px}
+.brand small{display:block;font-size:10px;color:var(--muted)}
+.live{display:flex;align-items:center;gap:6px;background:rgba(56,189,248,.10);color:var(--accent);border:1px solid var(--line2);padding:5px 10px;border-radius:999px;font-size:11px;font-weight:700}
+.live i{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:14px;box-shadow:0 18px 40px rgba(0,0,0,.32)}
+.sec-title{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.sec-title h2{font-size:15px;font-weight:700}
+.sec-title svg{width:18px;height:18px;color:var(--accent)}
+.small{color:var(--muted);font-size:11.5px}
+
+.presets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.presets button{padding:9px 4px;border-radius:10px;cursor:pointer;font-size:11px;font-weight:700;background:var(--panel2);color:var(--work);border:1px solid var(--line);transition:all .2s}
+.presets button.act{background:rgba(56,189,248,.10);color:var(--accent);border-color:var(--line2)}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fields.single{grid-template-columns:1fr}
+.fields label{display:flex;flex-direction:column;gap:4px}
+.fields .lb{font-size:10px;letter-spacing:1px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.fields .lb svg{width:12px;height:12px;color:var(--accent)}
+.fields input{width:100%;padding:10px 11px;border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);border:1px solid var(--line);outline:none}
+.fields input:focus{border-color:var(--accent)}
+.btn{
+  width:100%;margin-top:16px;padding:13px 0;border:none;border-radius:12px;cursor:pointer;
+  background:linear-gradient(135deg,var(--accent),#0ea5e9);color:#06121f;font-size:14.5px;font-weight:800;letter-spacing:.4px;
+  display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 10px 24px rgba(56,189,248,.30)
+}
+.btn:disabled{opacity:.7;cursor:wait}
+.btn .spin{width:15px;height:15px;border:2px solid rgba(6,18,31,.35);border-top-color:#06121f;border-radius:50%;animation:spin .7s linear infinite}
+.badge{padding:6px 12px;border-radius:999px;font-size:11.5px;font-weight:800;white-space:nowrap}
+.b-low{background:rgba(34,197,94,.13);color:var(--green);border:1px solid rgba(34,197,94,.33)}
+.b-med{background:rgba(251,191,36,.13);color:var(--amber);border:1px solid rgba(251,191,36,.33)}
+.b-hig{background:rgba(248,113,113,.13);color:var(--red);border:1px solid rgba(248,113,113,.33)}
+.b-cri{background:rgba(185,28,28,.30);color:#fda4af;border:1px solid rgba(248,113,113,.45)}
+
+.result-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.rid{font-family:Consolas,monospace;font-size:12.5px;font-weight:600}
+.badges{display:flex;gap:6px;flex-wrap:wrap}
+.ring-wrap{display:flex;justify-content:center;margin-bottom:12px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;animation:rise .4s ease}
+.stat .l{font-size:10px;letter-spacing:1px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.stat .l svg{width:13px;height:13px;color:var(--accent)}
+.stat .v{font-size:14.5px;font-weight:700;word-break:break-word}
+.stat .s{font-size:10.5px;color:var(--dim);margin-top:2px}
+
+.recs{display:flex;flex-direction:column;gap:3px}
+.recs .r{display:flex;gap:9px;padding:8px 6px;border-radius:8px;align-items:flex-start}
+.recs .r svg{width:15px;height:15px;color:var(--green);flex:none;margin-top:1px}
+.recs .r span{font-size:12.5px;color:var(--work);line-height:1.45}
+
+.hist{width:100%;border-collapse:collapse;font-size:12px}
+.hist th{text-align:left;padding:8px;color:var(--dim);letter-spacing:1px;font-size:9.5px;border-bottom:1px solid var(--line)}
+.hist td{padding:9px 8px;border-bottom:1px solid var(--line);font-family:Consolas,monospace;font-size:11px}
+.hist td.mono{color:var(--muted)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;animation:pulse 2s infinite}
+.footer{text-align:center;color:var(--dim);font-size:10.5px;padding:16px 0 4px;border-top:1px solid var(--line);margin-top:16px}
+.error{margin-top:12px;padding:11px;border-radius:10px;background:rgba(248,113,113,.10);border:1px solid rgba(248,113,113,.35);color:var(--red);font-size:12px}
+.empty{text-align:center;color:var(--muted);font-size:12.5px;padding:26px 10px}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="brand">
+    <div class="logo">C</div>
+    <div><b>CRIF-NN Road Monitor</b><small>Climate-Resilient Infrastructure · NGA</small></div>
+  </div>
+  <div class="live"><i></i>LIVE</div>
+</div>
+
+<div class="wrap">
+
+  <div class="card">
+    <div class="sec-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-4.9-6-10a6 6 0 1 1 12 0c0 5.1-6 10-6 10z"/><circle cx="12" cy="11" r="2.4" fill="none"/></svg>
+      <h2>Road Assessment</h2></div>
+    <div class="small">Quick scenario or custom road data</div>
+    <div class="presets">
+      <button id="pr-abuja">Abuja Centre</button>
+      <button id="pr-kano">Kano Heat</button>
+      <button id="pr-flood">Flood Zone</button>
+    </div>
+    <div class="fields">
+      <label><span class="lb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-4.9-6-10a6 6 0 1 1 12 0c0 5.1-6 10-6 10z"/><circle cx="12" cy="11" r="2.4"/></svg>LATITUDE</span><input type="number" id="lat" step="0.0001" value="9.0579"></label>
+      <label><span class="lb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-4.9-6-10a6 6 0 1 1 12 0c0 5.1-6 10-6 10z"/><circle cx="12" cy="11" r="2.4"/></svg>LONGITUDE</span><input type="number" id="lon" step="0.0001" value="7.4951"></label>
+      <label><span class="lb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4a2 2 0 1 1 4 0v8.5a4.5 4.5 0 1 1-4 0z"/><circle cx="12" cy="17" r="1.5"/></svg>TEMP °C</span><input type="number" id="temp" value="32"></label>
+      <label><span class="lb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15h14l-3-7H8z"/><path d="M8 21l-1-2M12 21l-1.4-2.8M16 21l-1-2"/></svg>RAINFALL MM</span><input type="number" id="rain" value="25"></label>
+    </div>
+    <div class="fields single" style="margin-top:10px">
+      <label><span class="lb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="3"/><circle cx="9" cy="8.2" r="1.3"/><circle cx="15" cy="8.2" r="1.3"/><circle cx="9" cy="15.8" r="1.3"/><circle cx="15" cy="15.8" r="1.3"/></svg>TRAFFIC VOLUME (VEH/DAY)</span><input type="number" id="traffic" value="5000"></label>
+    </div>
+    <button class="btn" id="go">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#06121f" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l3.2-4.6"/><circle cx="12" cy="16" r="1.4" fill="#06121f"/></svg>
+      <span id="go-label">ANALYZE ROAD CONDITION</span>
+    </button>
+    <div class="error" id="err" style="display:none"></div>
+  </div>
+
+  <!-- Result card -->
+  <div class="card" id="res" style="display:none">
+    <div class="result-head">
+      <div><div class="small">SEGMENT</div><div class="rid" id="rid">-</div></div>
+      <div class="badges" id="badges"></div>
+    </div>
+    <div class="ring-wrap" id="ring"></div>
+    <div class="stats">
+      <div class="stat"><div class="l"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="3"/><circle cx="9" cy="8.2" r="1.3"/><circle cx="15" cy="8.2" r="1.3"/><circle cx="9" cy="15.8" r="1.3"/><circle cx="15" cy="15.8" r="1.3"/></svg>DISTRESS</div><div class="v" id="dst">-</div></div>
+      <div class="stat"><div class="l"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h8M8 10h8M8 14h5"/><rect x="4" y="3" width="16" height="18" rx="3"/></svg>PRIORITY</div><div class="v" id="pr">-</div></div>
+      <div class="stat"><div class="l"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="18" height="4" rx="1"/><path d="M6 10l6-5 6 5z"/><path d="M6 18h12"/></svg>BUDGET ESTIMATE</div><div class="v" id="budget">-</div><div class="s">Range for this segment</div></div>
+      <div class="stat"><div class="l"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg>SCHEDULE</div><div class="v" id="sched" style="font-size:12px;font-weight:600">-</div></div>
+    </div>
+  </div>
+
+  <div class="card" id="pol" style="display:none">
+    <div class="sec-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.4-3 7.4-7 9-4-1.6-7-4.6-7-9V6z"/><path d="M8.5 12.3l2.4 2.4 4.6-5"/></svg>
+      <h2>Policy Recommendations</h2></div>
+    <div class="recs" id="policy"></div>
+  </div>
+
+  <div class="card" id="hist-card" style="display:none">
+    <div class="sec-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg>
+      <h2>Recent Assessments</h2></div>
+    <div style="overflow-x:auto">
+      <table class="hist">
+        <thead><tr><th>TIME</th><th>SEGMENT</th><th>SCORE</th><th>RISK</th><th>PRIORITY</th></tr></thead>
+        <tbody id="hist-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer" id="foot"></div>
+</div>
+
+<script>
+const A = 'https://crif-nn-backend.onrender.com';
+const $ = id => document.getElementById(id);
+const riskCls = r => ({Low:'b-low',Medium:'b-med',High:'b-hig',Critical:'b-cri'})[r] || 'b-low';
+const riskColor = r => ({Low:'#22c55e',Medium:'#fbbf24',High:'#f87171',Critical:'#ef4444'})[r] || '#22c55e';
+const ringColor = s => s >= 80 ? '#22c55e' : s >= 60 ? '#fbbf24' : s >= 40 ? '#f87171' : '#ef4444';
+
+const PRESETS = {
+  abuja: { lat: 9.0579, lon: 7.4951, temp: 32, rain: 25, traffic: 5000 },
+  kano:  { lat: 12.0, lon: 8.52, temp: 42, rain: 0, traffic: 3000 },
+  flood: { lat: 9.0, lon: 8.0, temp: 28, rain: 120, traffic: 10000 },
+};
+
+let history = [];
+
+function applyPreset(name) {
+  const p = PRESETS[name];
+  $('lat').value = p.lat; $('lon').value = p.lon; $('temp').value = p.temp; $('rain').value = p.rain; $('traffic').value = p.traffic;
+  document.querySelectorAll('.presets button').forEach(b => b.classList.remove('act'));
+  $('pr-' + name).classList.add('act');
+}
+Object.keys(PRESETS).forEach(k => { $('pr-' + k).addEventListener('click', () => applyPreset(k)); });
+
+function ring(score) {
+  const r = 54, circ = 2 * Math.PI * r, color = ringColor(score);
+  const pct = Math.max(0, Math.min(100, score));
+  return `<svg width="150" height="150" viewBox="0 0 150 150">
+    <circle cx="75" cy="75" r="${r}" fill="none" stroke="rgba(30,49,82,.6)" stroke-width="11"/>
+    <circle cx="75" cy="75" r="${r}" fill="none" stroke="${color}" stroke-width="11" stroke-linecap="round"
+      stroke-dasharray="${circ}" stroke-dashoffset="${circ - (pct/100)*circ}" transform="rotate(-90 75 75)"
+      style="filter:drop-shadow(0 0 8px ${color}66)"/>
+  </svg>
+  <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+    <div style="font-size:32px;font-weight:800;color:var(--text);line-height:1">${Math.round(score)}<span style="font-size:15px;color:var(--muted)">%</span></div>
+    <div style="font-size:9px;letter-spacing:2px;color:var(--dim);margin-top:3px">CONDITION</div>
+  </div>`;
+}
+
+function renderResult(d) {
+  $('res').style.display = 'block';
+  $('rid').textContent = d.road_id;
+  $('badges').innerHTML =
+    `<span class="badge ${riskCls(d.risk_level)}">RISK: ${d.risk_level}</span>` +
+    `<span class="badge ${riskCls(d.climate_risk)}">${d.climate_risk} CLIMATE</span>`;
+  $('ring').innerHTML = `<div style="position:relative">${ring(d.condition_score)}</div>`;
+  $('dst').textContent = d.distress_type;
+  $('pr').textContent = d.maintenance_priority;
+  $('budget').textContent = d.budget_estimate;
+  $('sched').textContent = d.maintenance_schedule;
+
+  $('pol').style.display = 'block';
+  $('policy').innerHTML = d.policy_recommendations.map(r => `<div class="r"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.3l2.4 2.4 4.6-5"/></svg><span>${r}</span></div>`).join('');
+
+  history = [{ ts: new Date().toLocaleTimeString(), ...d }, ...history].slice(0, 10);
+  $('hist-card').style.display = 'block';
+  $('hist-body').innerHTML = history.map(h => `<tr>
+    <td class="mono">${h.ts}</td><td>${h.road_id}</td><td style="font-weight:700">${h.condition_score}%</td>
+    <td><span class="dot" style="background:${riskColor(h.risk_level)}"></span><span style="color:${riskColor(h.risk_level)};font-weight:700">${h.risk_level}</span></td>
+    <td style="color:var(--work);font-family:'Segoe UI',sans-serif">${h.maintenance_priority}</td>
+  </tr>`).join('');
+}
+
+$('go').addEventListener('click', async () => {
+  $('err').style.display = 'none';
+  $('go-label').textContent = 'ANALYZING…';
+  $('go').innerHTML = `<span class="spin"></span> ANALYZING…`;
+  try {
+    const res = await fetch(`${A}/predict`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        latitude: +$('lat').value, longitude: +$('lon').value,
+        temperature: +$('temp').value, rainfall_mm: +$('rain').value,
+        traffic_volume: +$('traffic').value
+      })
+    });
+    if (!res.ok) throw new Error('Server responded ' + res.status);
+    renderResult(await res.json());
+  } catch (e) {
+    $('err').textContent = 'Connection error: ' + e.message + '. Is the CRIF-NN backend running on ' + A + '?';
+    $('err').style.display = 'block';
+  } finally {
+    $('go').innerHTML = `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#06121f" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l3.2-4.6"/><circle cx="12" cy="16" r="1.4" fill="#06121f"/></svg><span id="go-label">ANALYZE ROAD CONDITION</span>`;
+  }
+});
+
+$('foot').textContent = 'CRIF-NN v3 · AI Road Condition Monitoring · ' + A + ' · NGA';
+applyPreset('abuja');
+</script>
+</body>
+</html>
