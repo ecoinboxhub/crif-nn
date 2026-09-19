@@ -5,11 +5,11 @@ climate-resilient road infrastructure in Northern Nigeria.
 
 ## Applications
 
-| App     | Stack                        | Live URL                                        |
-| ------- | ---------------------------- | ----------------------------------------------- |
-| Backend | FastAPI (Python) on Render   | https://crif-nn-backend.onrender.com            |
-| Frontend| React (CDN) static on Vercel | (adding after Vercel deploy)                    |
-| Mobile  | Static HTML on GitHub Pages  | (adding after Pages publish)                    |
+| App     | Stack                        | Live URL                                   |
+| ------- | ---------------------------- | ------------------------------------------ |
+| Backend | FastAPI (Python) on Render   | https://crif-nn-backend.onrender.com       |
+| Frontend| React (CDN) static on Vercel | https://frontend-pi-seven-30.vercel.app    |
+| Mobile  | Static HTML on GitHub Pages  | https://ecoinboxhub.github.io/crif-nn/     |
 
 ## Backend API
 
