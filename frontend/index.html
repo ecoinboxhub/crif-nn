@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRIF-NN Road Monitor - Dashboard v3</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+const { useState } = React;
+// CRIF-NN Road Monitor - v3 Dashboard
+// Climate-Resilient Infrastructure Framework for Northern Nigeria
+const API = 'http://localhost:8001';
+
+const C = {
+  bg: '#0b1220',
+  panel: 'rgba(17, 26, 45, 0.92)',
+  panel2: 'rgba(22, 36, 63, 0.85)',
+  panel3: 'rgba(30, 49, 82, 0.6)',
+  line: '#243454',
+  line2: '#31466f',
+  text: '#e8eefc',
+  muted: '#90a3c4',
+  dim: '#5d7298',
+  accent: '#38bdf8',
+  teal: '#2dd4bf',
+  green: '#22c55e',
+  amber: '#fbbf24',
+  red: '#f87171',
+  crimson: '#ef4444',
+  blueBg: 'rgba(56, 189, 248, 0.10)',
+  work: '#94a3b8',
+};
+
+const RISK = {
+  Low:     { color: C.green,  bg: 'rgba(34,197,94,0.13)' },
+  Medium:  { color: C.amber,  bg: 'rgba(251,191,36,0.13)' },
+  High:    { color: C.red,    bg: 'rgba(248,113,113,0.13)' },
+  Critical:{ color: '#fda4af', bg: 'rgba(185,28,28,0.30)' },
+};
+
+const PRESETS = [
+  { name: 'Abuja Centre', lat: 9.0579, lon: 7.4951, temp: 32, rain: 25, traffic: 5000 },
+  { name: 'Kano Heat',    lat: 12.0,   lon: 8.52,   temp: 42, rain: 0,  traffic: 3000 },
+  { name: 'Flood Zone',   lat: 9.0,    lon: 8.0,    temp: 28, rain: 120, traffic: 10000 },
+];
+
+const Icon = ({ name, color = C.accent, size = 18 }) => {
+  const s = { width: size, height: size, color };
+  const paths = {
+    road: <><rect x="6" y="2.6" width="4" height="18.8" rx="1.4" /><rect x="10" y="9" width="4" height="12.4" rx="1.4" /><rect x="14" y="4" width="4" height="17.4" rx="1.4" /></>,
+    pin: <><path d="M12 21s-6-4.9-6-10a6 6 0 1 1 12 0c0 5.1-6 10-6 10z" /><circle cx="12" cy="11" r="2.4" fill="#0b1220" /></>,
+    gauge: <><path d="M4 16a8 8 0 1 1 16 0" /><path d="M12 16l3.4-4.6" /><circle cx="12" cy="16" r="1.6" fill={color} /></>,
+    temp: <><path d="M10 4a2 2 0 1 1 4 0v8.5a4.5 4.5 0 1 1-4 0z" /><circle cx="12" cy="17" r="1.5" /></>,
+    rain: <><path d="M5 15h14l-3-7H8z" /><path d="M8 21l-1-2M12 21l-1.4-2.8M16 21l-1-2" /></>,
+    traffic: <><rect x="4" y="3" width="16" height="18" rx="3" /><circle cx="9" cy="8.2" r="1.3" /><circle cx="15" cy="8.2" r="1.3" /><circle cx="9" cy="15.8" r="1.3" /><circle cx="15" cy="15.8" r="1.3" /></>,
+    clip: <><path d="M8 6h8M8 10h8M8 14h5" /><rect x="4" y="3" width="16" height="18" rx="3" /></>,
+    check: <><circle cx="12" cy="12" r="9" /><path d="M8.5 12.3l2.4 2.4 4.6-5" /></>,
+    shield: <><path d="M12 3l7 3v6c0 4.4-3 7.4-7 9-4-1.6-7-4.6-7-9V6z" /></>,
+    clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.2 2" /></>,
+    bank: <><rect x="3" y="10" width="18" height="4" rx="1" /><path d="M6 10l6-5 6 5z" /><path d="M6 18h12" /></>,
+    live: <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" /></>,
+    grid: <><rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="4" y="14" width="6" height="6" rx="1" /><rect x="14" y="14" width="6" height="6" rx="1" /></>,
+  };
+  return <svg viewBox="0 0 24 24" style={s} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{paths[name] || paths.road}</svg>;
+};
+
+const globalCSS = `
+  @keyframes crifnn-pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  @keyframes crifnn-spin { to { transform: rotate(360deg) } }
+  @keyframes crifnn-rise { from { opacity:0; transform: translateY(8px) } to { opacity:1; transform:none } }
+  @keyframes crifnn-shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+`;
+
+function ScoreRing({ score }) {
+  const r = 54, circ = 2 * Math.PI * r;
+  const color = score >= 80 ? C.green : score >= 60 ? C.amber : score >= 40 ? C.red : C.crimson;
+  const pct = Math.max(0, Math.min(100, score));
+  return (
+    <div style={{ position: 'relative', width: 150, height: 150, margin: '0 auto' }}>
+      <svg width="150" height="150" viewBox="0 0 150 150">
+        <circle cx="75" cy="75" r={r} fill="none" stroke={C.panel3} strokeWidth="11" />
+        <circle cx="75" cy="75" r={r} fill="none" stroke={color} strokeWidth="11" strokeLinecap="round"
+          strokeDasharray={circ} strokeDashoffset={circ - (pct / 100) * circ}
+          transform="rotate(-90 75 75)" style={{ filter: `drop-shadow(0 0 8px ${color}66)`, transition: 'stroke-dashoffset .8s ease' }} />
+      </svg>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ fontSize: 34, fontWeight: 800, color: C.text, lineHeight: 1 }}>{Math.round(score)}<span style={{ fontSize: 16, color: C.muted }}>%</span></div>
+        <div style={{ fontSize: 10, letterSpacing: 2, color: C.dim, marginTop: 4 }}>CONDITION</div>
+      </div>
+    </div>
+  );
+}
+
+function Stat({ icon, label, value, sub, color = C.text, valueStyle }) {
+  return (
+    <div style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 12, padding: '12px 14px', animation: 'crifnn-rise .4s ease' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: C.muted, fontSize: 11, letterSpacing: 1, marginBottom: 6 }}>
+        <Icon name={icon} size={14} color={C.accent} /> {label.toUpperCase()}
+      </div>
+      <div style={{ fontSize: 16, fontWeight: 700, color, wordBreak: 'break-word', ...valueStyle }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: C.dim, marginTop: 2 }}>{sub}</div>}
+    </div>
+  );
+}
+
+function App() {
+  const [form, setForm] = useState({ latitude: 9.0579, longitude: 7.4951, temperature: 32, rainfall_mm: 25, traffic_volume: 5000 });
+  const [result, setResult] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const predict = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API}/predict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) throw new Error(`Server responded ${res.status}`);
+      const data = await res.json();
+      setResult(data);
+      setHistory(prev => [{ ...data, ts: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
+    } catch (e) {
+      setError(`Connection error: ${e.message}. Is the CRIF-NN backend running on ${API}?`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const applyPreset = (p) => {
+    setForm({ latitude: p.lat, longitude: p.lon, temperature: p.temp, rainfall_mm: p.rain, traffic_volume: p.traffic });
+    setResult(null);
+  };
+
+  const risk = result ? RISK[result.risk_level] || RISK.Low : null;
+  const climate = result ? RISK[result.climate_risk] || RISK.Low : null;
+  const input = (name, label, icon, step) => (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <span style={{ fontSize: 11, letterSpacing: 1, color: C.muted, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Icon name={icon} size={13} /> {label.toUpperCase()}
+      </span>
+      <input type="number" step={step} value={form[name]}
+        onChange={e => setForm({ ...form, [name]: +e.target.value })}
+        style={{
+          width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14,
+          background: C.bg, color: C.text, border: `1px solid ${C.line}`,
+          outline: 'none', transition: 'border-color .2s',
+        }}
+        onFocus={e => e.target.style.borderColor = C.accent}
+        onBlur={e => e.target.style.borderColor = C.line} />
+    </label>
+  );
+
+  return (
+    <div style={{ fontFamily: "'Segoe UI', Roboto, sans-serif", minHeight: '100vh', color: C.text, background: C.bg, backgroundImage: `radial-gradient(circle at 12% -10%, rgba(56,189,248,0.14), transparent 45%), radial-gradient(circle at 88% 12%, rgba(45,212,191,0.10), transparent 45%), linear-gradient(rgba(56,189,248,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(56,189,248,0.035) 1px, transparent 1px)`, backgroundSize: 'auto, auto, 34px 34px, 34px 34px' }}>
+      <style dangerouslySetInnerHTML={{ __html: globalCSS }} />
+
+      {/* Navbar */}
+      <nav style={{ background: 'rgba(8,12,24,0.55)', borderBottom: `1px solid ${C.line}`, backdropFilter: 'blur(8px)', position: 'sticky', top: 0, zIndex: 20 }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: `linear-gradient(135deg, ${C.accent}, ${C.teal})`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 18px rgba(56,189,248,0.35)' }}>
+              <span style={{ color: '#071018', fontWeight: 900, fontSize: 18 }}>C</span>
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: .3 }}>CRIF-NN <span style={{ color: C.accent }}>Road Monitor</span></div>
+              <div style={{ fontSize: 11, color: C.muted }}>Climate-Resilient Infrastructure Framework · Northern Nigeria</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.blueBg, color: C.accent, border: `1px solid ${C.line2}`, padding: '6px 12px', borderRadius: '999px', fontSize: 12, fontWeight: 600 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.green, animation: 'crifnn-pulse 1.6s infinite' }} /> LIVE
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: C.muted, fontSize: 12 }}>
+              <Icon name="grid" size={14} /> Model v2.0
+            </span>
+          </div>
+        </div>
+      </nav>
+
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: 22 }}>
+        {/* Layout */}
+        <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 18, alignItems: 'start' }}>
+          {/* ---- LEFT: Assessment ---- */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 16, padding: 18, boxShadow: '0 18px 40px rgba(0,0,0,0.35)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                <Icon name="pin" size={20} /> <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Road Assessment</h2>
+              </div>
+              <p style={{ margin: '0 0 14px', color: C.muted, fontSize: 12 }}>Select a scenario or enter custom road data</p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+                {PRESETS.map(p => (
+                  <button key={p.name} onClick={() => applyPreset(p)}
+                    style={{
+                      padding: '9px 6px', borderRadius: 10, cursor: 'pointer', fontSize: 11.5, fontWeight: 700,
+                      background: form.latitude === p.lat && form.longitude === p.lon ? C.blueBg : C.panel2,
+                      color: form.latitude === p.lat && form.longitude === p.lon ? C.accent : C.work,
+                      border: `1px solid ${form.latitude === p.lat && form.longitude === p.lon ? C.line2 : C.line}`,
+                      transition: 'all .2s',
+                    }}>
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {input('latitude', 'Latitude', 'pin', '0.0001')}
+                {input('longitude', 'Longitude', 'pin', '0.0001')}
+                {input('temperature', 'Temperature °C', 'temp')}
+                {input('rainfall_mm', 'Rainfall (mm)', 'rain')}
+              </div>
+              <div style={{ marginTop: 12 }}>
+                {input('traffic_volume', 'Traffic Volume (veh/day)', 'traffic')}
+              </div>
+
+              <button onClick={predict} disabled={loading}
+                style={{
+                  width: '100%', marginTop: 18, padding: '13px 0', borderRadius: 12, cursor: loading ? 'wait' : 'pointer',
+                  background: `linear-gradient(135deg, ${C.accent}, #0ea5e9)`, color: '#06121f', border: 'none',
+                  fontSize: 15, fontWeight: 800, letterSpacing: .4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  boxShadow: '0 10px 24px rgba(56,189,248,0.30)', transition: 'transform .15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-1px)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
+                {loading
+                  ? <><span style={{ width: 15, height: 15, border: '2px solid rgba(6,18,31,0.35)', borderTopColor: '#06121f', borderRadius: '50%', animation: 'crifnn-spin .7s linear infinite' }} /> ANALYZING…</>
+                  : <><Icon name="gauge" size={17} color="#06121f" /> ANALYZE ROAD CONDITION</>}
+              </button>
+
+              {error && (
+                <div style={{ marginTop: 14, padding: 11, borderRadius: 10, background: 'rgba(248,113,113,0.10)', border: '1px solid rgba(248,113,113,0.35)', color: C.red, fontSize: 12 }}>
+                  {error}
+                </div>
+              )}
+            </div>
+
+            {/* Climate reference mini-card */}
+            <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 16, padding: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <Icon name="shield" size={16} color={C.teal} />
+                <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: C.muted }}>POLICY ALIGNMENT</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7, fontSize: 11.5, color: C.work }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}><span style={{ color: C.teal }}>●</span> National Climate Change Policy 2021–2030</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}><span style={{ color: C.teal }}>●</span> Federal Ministry of Works specifications</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}><span style={{ color: C.teal }}>●</span> FERMA upkeep &amp; ICRC concession frameworks</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ---- RIGHT: Results ---- */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {!result ? (
+              <div style={{ background: C.panel, border: `1px dashed ${C.line2}`, borderRadius: 16, padding: '46px 30px', textAlign: 'center', boxShadow: '0 18px 40px rgba(0,0,0,0.30)' }}>
+                <Icon name="road" size={44} color={C.line2} />
+                <h3 style={{ margin: '14px 0 6px', fontSize: 17, color: C.text }}>No assessment yet</h3>
+                <p style={{ margin: 0, color: C.muted, fontSize: 13 }}>Enter road data on the left and run an AI condition assessment. Results, risk levels, budgets and policy recommendations will display here.</p>
+              </div>
+            ) : loading ? (
+              <div style={{ textAlign: 'center', padding: 40, color: C.muted }}>Updating…</div>
+            ) : (
+              <>
+                {/* Result header */}
+                <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 16, padding: 18, boxShadow: '0 18px 40px rgba(0,0,0,0.35)', animation: 'crifnn-rise .4s ease' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <Icon name="road" size={20} /> 
+                      <div>
+                        <div style={{ fontSize: 11, letterSpacing: 1, color: C.muted }}>SEGMENT</div>
+                        <div style={{ fontFamily: 'Consolas, monospace', fontSize: 15, fontWeight: 600 }}>{result.road_id}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <span style={{ padding: '7px 13px', borderRadius: '999px', fontSize: 12.5, fontWeight: 800, background: risk.bg, color: risk.color, border: `1px solid ${risk.color}55` }}>
+                        RISK: {result.risk_level}
+                      </span>
+                      <span style={{ padding: '7px 13px', borderRadius: '999px', fontSize: 12.5, fontWeight: 800, background: climate.bg, color: climate.color, border: `1px solid ${climate.color}55` }}>
+                        {result.climate_risk} CLIMATE
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: 18, alignItems: 'center' }}>
+                    <ScoreRing score={result.condition_score} />
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+                      <Stat icon="traffic" label="Distress" value={result.distress_type} color={risk.color} />
+                      <Stat icon="clip" label="Priority" value={result.maintenance_priority} />
+                      <Stat icon="bank" label="Budget Estimate" value={result.budget_estimate} color={C.teal} sub="Range for this segment" />
+                      <Stat icon="clock" label="Schedule" value={result.maintenance_schedule} color={C.text} valueStyle={{ fontSize: 12.5, fontWeight: 600 }} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Policy recommendations */}
+                <div style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 18, animation: 'crifnn-rise .45s ease' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <Icon name="shield" size={17} color={C.amber} />
+                    <h3 style={{ margin: 0, fontSize: 14, letterSpacing: 1, color: C.text }}>POLICY RECOMMENDATIONS</h3>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {result.policy_recommendations.map((rec, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 10, padding: '8px 6px', borderRadius: 8, alignItems: 'flex-start' }}>
+                        <Icon name="check" size={16} color={C.green} />
+                        <span style={{ fontSize: 13, color: C.work, lineHeight: 1.45 }}>{rec}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* History */}
+                {history.length > 0 && (
+                  <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 16, padding: 18, animation: 'crifnn-rise .5s ease' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                      <Icon name="clock" size={16} color={C.accent} />
+                      <h3 style={{ margin: 0, fontSize: 14, letterSpacing: 1 }}>RECENT ASSESSMENTS</h3>
+                    </div>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                        <thead>
+                          <tr style={{ color: C.dim }}>
+                            {['TIME', 'SEGMENT', 'SCORE', 'RISK', 'PRIORITY'].map(h => (
+                              <th key={h} style={{ textAlign: 'left', padding: '8px 10px', borderBottom: `1px solid ${C.line}`, letterSpacing: 1, fontSize: 10.5 }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {history.map((h, i) => (
+                            <tr key={i}>
+                              <td style={{ padding: '9px 10px', borderBottom: `1px solid ${C.line}`, color: C.muted }}>{h.ts}</td>
+                              <td style={{ padding: '9px 10px', borderBottom: `1px solid ${C.line}`, fontFamily: 'Consolas, monospace', fontSize: 11.5 }}>{h.road_id}</td>
+                              <td style={{ padding: '9px 10px', borderBottom: `1px solid ${C.line}`, fontWeight: 700 }}>{h.condition_score}%</td>
+                              <td style={{ padding: '9px 10px', borderBottom: `1px solid ${C.line}` }}>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: (RISK[h.risk_level] || RISK.Low).color, fontWeight: 700 }}>
+                                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: (RISK[h.risk_level] || RISK.Low).color, animation: 'crifnn-pulse 2s infinite' }} /> {h.risk_level}
+                                </span>
+                              </td>
+                              <td style={{ padding: '9px 10px', borderBottom: `1px solid ${C.line}`, color: C.work }}>{h.maintenance_priority}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        <footer style={{ textAlign: 'center', color: C.dim, fontSize: 11.5, padding: '18px 0 6px', borderTop: `1px solid ${C.line}`, marginTop: 10 }}>
+          <Icon name="live" size={12} color={C.dim} /> CRIF-NN v3 · AI Road Condition Monitoring · API <span style={{ fontFamily: 'Consolas, monospace' }}>{API}</span> · NGA
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
