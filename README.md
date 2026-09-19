@@ -5,11 +5,11 @@ climate-resilient road infrastructure in Northern Nigeria.
 
 ## Applications
 
-| App     | Stack                        | Live URL                            |
-| ------- | ---------------------------- | ----------------------------------- |
-| Backend | FastAPI (Python) on Render   | `https://crif-nn-backend.onrender.com` (to be confirmed) |
-| Frontend| React (CDN) static on Vercel | (to be added)                       |
-| Mobile  | Static HTML on GitHub Pages  | (to be added)                       |
+| App     | Stack                        | Live URL                                        |
+| ------- | ---------------------------- | ----------------------------------------------- |
+| Backend | FastAPI (Python) on Render   | https://crif-nn-backend.onrender.com            |
+| Frontend| React (CDN) static on Vercel | (adding after Vercel deploy)                    |
+| Mobile  | Static HTML on GitHub Pages  | (adding after Pages publish)                    |
 
 ## Backend API
 
@@ -23,7 +23,7 @@ climate-resilient road infrastructure in Northern Nigeria.
 Example single prediction:
 
 ```bash
-curl -X POST https://<backend-url>/predict \
+curl -X POST https://crif-nn-backend.onrender.com/predict \
   -H "Content-Type: application/json" \
   -d '{"latitude":9.0579,"longitude":7.4951,"temperature":32,"rainfall_mm":25,"traffic_volume":5000}'
 ```
